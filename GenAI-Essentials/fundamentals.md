@@ -5,14 +5,14 @@
 ## Road Map
 
 ```
-PART 1 — THE BIG PICTURE          What GenAI is, how it generates content, and across what modalities
-PART 2 — LANGUAGE & TEXT           NLP pipeline, how machines process and understand text
-PART 3 — ML FUNDAMENTALS          Core learning tasks: regression, classification, clustering
-PART 4 — DATA & EVALUATION        How to prepare data, evaluate models, and avoid common pitfalls
-PART 5 — NEURAL NETWORKS          From a single neuron to CNNs and RNNs
-PART 6 — REPRESENTATIONS          Embeddings, attention, and the architectures that power modern AI
-PART 7 — TRANSFORMER MODELS       BERT, SBERT, and practical NLP with transformers
-PART 8 — MODERN GenAI             LLMs, prompting, RAG, fine-tuning, agents, and the full GenAI stack
+PART 1 — THE BIG PICTURE          AI hierarchy, GenAI techniques (GANs, VAEs, Transformers, Diffusion), modalities
+PART 2 — LANGUAGE & TEXT           NLP pipeline, text preprocessing, BoW, TF-IDF, subword tokenization
+PART 3 — ML FUNDAMENTALS          Regression, classification, clustering, ML types, project lifecycle, ensembles
+PART 4 — DATA & EVALUATION        Scaling, splits, CV, leakage, augmentation, metrics, overfitting, regularization
+PART 5 — NEURAL NETWORKS          Perceptron → activations → FNN → CNNs → RNNs, optimizers, LR scheduling
+PART 6 — REPRESENTATIONS          One-hot → embeddings → attention → positional encoding → Transformer architecture
+PART 7 — TRANSFORMER MODELS       BERT, GPT, SBERT, dimensionality reduction, feature engineering
+PART 8 — MODERN GenAI             LLMs, tokens, prompting, structured output, RAG, fine-tuning, agents, deployment, safety
 ```
 
 ---
@@ -27,6 +27,41 @@ PART 8 — MODERN GenAI             LLMs, prompting, RAG, fine-tuning, agents, a
 GenAI (Generative AI) is a subset of AI that focuses on **creating new content or data**. Unlike traditional AI that only analyzes and interprets existing data, GenAI can generate entirely new text, images, music, code, and other forms of media.
 
 **Analogy:** Think of traditional AI as a brilliant analyst who reads thousands of books and tells you the answers. GenAI is like that same analyst who can also *write* new books, compose music, or paint paintings based on everything they've learned.
+
+## Where GenAI fits in the AI family tree
+
+```
+Artificial Intelligence (AI)
+  └── Machine Learning (ML)           ← learns from data instead of explicit rules
+        ├── Classical ML               ← decision trees, SVMs, random forests
+        └── Deep Learning (DL)         ← neural networks with many layers
+              ├── Discriminative        ← classifies or predicts (CNNs, BERT)
+              └── Generative AI         ← creates new content (GPT, DALL-E, Stable Diffusion)
+```
+
+- **AI** = any system that mimics human intelligence (includes rule-based systems, search algorithms, etc.)
+- **ML** = AI that learns patterns from data rather than being explicitly programmed
+- **Deep Learning** = ML using multi-layer neural networks, excelling on unstructured data (images, text, audio)
+- **GenAI** = Deep Learning models that generate new content rather than just classifying existing content
+
+## Brief history — key milestones
+
+| Year | Milestone | Why it matters |
+|------|-----------|---------------|
+| 1957 | Perceptron invented | First trainable neural network |
+| 1986 | Backpropagation popularized | Made training multi-layer networks practical |
+| 1997 | LSTM invented | Solved vanishing gradient for sequences |
+| 2012 | AlexNet wins ImageNet | Deep learning revolution begins (CNNs) |
+| 2013 | Word2Vec released | Words become vectors with meaning |
+| 2014 | GANs introduced | Machines can generate realistic images |
+| 2017 | "Attention Is All You Need" | The Transformer architecture — everything changes |
+| 2018 | BERT released | Bidirectional pretraining redefines NLP benchmarks |
+| 2018 | GPT-1 released | Decoder-only transformers show generative power |
+| 2020 | GPT-3 (175B params) | Few-shot learning emerges at scale |
+| 2022 | ChatGPT launched | LLMs reach mainstream adoption |
+| 2022 | Stable Diffusion released | Open-source text-to-image diffusion model |
+| 2023 | GPT-4, Claude 2, Llama 2 | Multimodal models, open-source race begins |
+| 2024 | Claude 3.5, Llama 3, Gemini | 200K+ context windows, AI agents, tool use |
 
 **Quick example — generating text with the Claude API:**
 
@@ -194,6 +229,19 @@ print(lemmatizer.lemmatize("studies", pos="v"))  # "study"
 
 > **Stemming vs Lemmatization:** Stemming is like hacking a word with a machete — fast but crude. Lemmatization is like looking it up in a dictionary — slower but accurate. Use lemmatization when output quality matters.
 
+### Stop Words Removal
+Remove common words that carry little meaning ("the", "is", "at", "and"). They add noise without adding information.
+```python
+from nltk.corpus import stopwords
+
+stop_words = set(stopwords.words('english'))
+tokens = ["I", "love", "machine", "learning", "and", "the", "amazing", "results"]
+filtered = [w for w in tokens if w.lower() not in stop_words]
+print(filtered)  # ['love', 'machine', 'learning', 'amazing', 'results']
+```
+
+> **When NOT to remove stop words:** Modern transformer models (BERT, GPT) actually need stop words — they carry grammatical meaning. Stop word removal is a classical NLP technique, not used with deep learning models.
+
 ---
 
 ## 2. Language Understanding (Structure / Syntax)
@@ -328,6 +376,64 @@ Automatically discover abstract topics across a collection of documents — no l
 
 ---
 
+# Text Representation: Bag-of-Words and TF-IDF
+
+Before embeddings (Word2Vec, BERT), text had to be converted to numbers using **counting-based methods**. These are still used in production for lightweight NLP tasks.
+
+## Bag-of-Words (BoW)
+Represent each document as a **vector of word counts**. Ignores word order entirely — just "what words are present and how often."
+
+```python
+from sklearn.feature_extraction.text import CountVectorizer
+
+docs = [
+    "I love machine learning",
+    "machine learning is amazing",
+    "I love deep learning"
+]
+
+vectorizer = CountVectorizer()
+X = vectorizer.fit_transform(docs)
+
+print(vectorizer.get_feature_names_out())
+# ['amazing', 'deep', 'is', 'learning', 'love', 'machine']
+print(X.toarray())
+# [[0, 0, 0, 1, 1, 1],   ← "I love machine learning"
+#  [1, 0, 1, 1, 0, 1],   ← "machine learning is amazing"
+#  [0, 1, 0, 1, 1, 0]]   ← "I love deep learning"
+```
+
+**Limitation:** "I love dogs" and "Dogs love I" produce identical vectors — word order is lost.
+
+## TF-IDF (Term Frequency — Inverse Document Frequency)
+An improvement over BoW: **words that appear in many documents get downweighted** (common words like "the" become less important), while rare but meaningful words get boosted.
+
+- **TF** = how often a word appears in THIS document (higher = more relevant to this doc)
+- **IDF** = how rare a word is across ALL documents (rarer = more informative)
+- **TF-IDF = TF × IDF** — a word scores high if it's frequent in this document but rare overall
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform(docs)
+
+print(vectorizer.get_feature_names_out())
+print(X.toarray().round(2))
+# "learning" appears in all 3 docs → low IDF → lower weight
+# "amazing" appears in only 1 doc → high IDF → higher weight
+```
+
+**Real-world use:** TF-IDF is still used in production for:
+- Search engine ranking (the original PageRank used TF-IDF)
+- Spam detection
+- Document similarity (faster and cheaper than embeddings for simple cases)
+- Feature extraction before feeding into classical ML models
+
+> **BoW/TF-IDF vs Embeddings:** BoW and TF-IDF are sparse, high-dimensional, and ignore word meaning ("happy" and "joyful" are as different as "happy" and "car"). Embeddings are dense, low-dimensional, and capture semantic meaning. Use TF-IDF when you need speed and simplicity. Use embeddings when you need understanding.
+
+---
+
 # LLM Tokenization (BPE, WordPiece, SentencePiece)
 
 The NLP tokenization above splits text into **whole words**. Modern LLMs use **subword tokenization** — splitting words into smaller meaningful pieces. This is a fundamentally different approach.
@@ -388,6 +494,7 @@ Regression finds a mathematical function that maps inputs to a **continuous nume
 - **MAE** (Mean Absolute Error): average of absolute differences — intuitive to interpret ("off by $5k on average")
 - **MSE** (Mean Squared Error): penalizes large errors more heavily — sensitive to outliers
 - **RMSE** (Root MSE): square root of MSE, same units as the target — most commonly reported
+- **R² (R-squared)**: proportion of variance explained by the model. R²=1 means perfect fit, R²=0 means the model is no better than predicting the mean. Negative R² means worse than the mean. This is the metric you'll see most in regression reports
 
 ```python
 from sklearn.linear_model import LinearRegression
@@ -517,6 +624,47 @@ plt.show()
 
 ---
 
+# The ML Project Lifecycle
+
+In real-world projects, training a model is only ~20% of the work. Here's the full lifecycle:
+
+```
+1. Define Problem → 2. Collect Data → 3. Clean & Explore → 4. Feature Engineering
+                                                                     ↓
+8. Monitor & Retrain ← 7. Deploy ← 6. Evaluate ← 5. Train & Tune Model
+```
+
+| Phase | What happens | Tools commonly used |
+|-------|-------------|-------------------|
+| **1. Problem definition** | Define the business goal, success metric, and what "good enough" looks like | Stakeholder meetings, domain experts |
+| **2. Data collection** | Gather raw data from databases, APIs, web scraping, labeling services | SQL, pandas, Label Studio, Scale AI |
+| **3. Data cleaning & EDA** | Handle missing values, outliers, duplicates. Explore distributions and correlations | pandas, matplotlib, seaborn |
+| **4. Feature engineering** | Create, transform, and select features that help the model learn | pandas, sklearn transformers |
+| **5. Model training & tuning** | Train multiple models, tune hyperparameters, compare performance | sklearn, XGBoost, PyTorch, Optuna |
+| **6. Evaluation** | Evaluate on held-out test set using the right metrics for your problem | sklearn.metrics, cross-validation |
+| **7. Deployment** | Serve the model in production via API, batch pipeline, or edge device | FastAPI, Docker, AWS SageMaker, MLflow |
+| **8. Monitoring & retraining** | Track model drift (when real-world data shifts away from training data), retrain periodically | Evidently AI, Weights & Biases, MLflow |
+
+**Experiment tracking in practice:** In real projects, you train dozens of model variants. Tools like **MLflow** and **Weights & Biases** log every experiment (hyperparameters, metrics, artifacts) so you can compare and reproduce results.
+
+```python
+import mlflow
+
+mlflow.set_experiment("house-price-prediction")
+
+with mlflow.start_run():
+    mlflow.log_param("model", "RandomForest")
+    mlflow.log_param("n_estimators", 200)
+    mlflow.log_metric("rmse", 15420.5)
+    mlflow.log_metric("r2", 0.94)
+    mlflow.sklearn.log_model(model, "model")
+    # All params, metrics, and the model itself are now versioned and reproducible
+```
+
+> **The 80/20 rule of ML:** 80% of the work is data preparation, cleaning, and feature engineering. Only 20% is actual model training. The fanciest algorithm won't save you from bad data.
+
+---
+
 # Classical ML
 
 Classical ML refers to algorithms that work well **without deep neural networks** — usually faster to train, more interpretable, and often better for structured/tabular data.
@@ -559,6 +707,40 @@ scores = cross_val_score(pipeline, data.data, data.target, cv=5, scoring='accura
 print(f"5-fold CV accuracy: {scores.mean():.2%} ± {scores.std():.2%}")
 # Typically: ~96-97% on breast cancer dataset
 ```
+
+## Ensemble Methods — Why They Win Competitions
+
+Ensemble methods **combine multiple models** to produce better predictions than any single model alone. They dominate Kaggle competitions and are heavily used in production.
+
+### Bagging (Bootstrap Aggregating)
+Train multiple models on **random subsets** of the data, then average their predictions. Reduces variance (overfitting).
+- **Random Forest** = bagging with decision trees + random feature subsets per split
+
+### Boosting
+Train models **sequentially** — each new model focuses on the errors the previous models got wrong. Reduces bias (underfitting).
+- **XGBoost** / **LightGBM** / **CatBoost** = the workhorses of tabular ML in production
+
+### Stacking
+Train multiple different model types, then train a **meta-model** on top that learns how to best combine their predictions.
+
+```python
+from sklearn.ensemble import GradientBoostingClassifier, VotingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+
+# Simple ensemble: combine 3 different models via majority vote
+ensemble = VotingClassifier(estimators=[
+    ('lr', LogisticRegression(max_iter=10000)),
+    ('rf', RandomForestClassifier(n_estimators=100)),
+    ('gb', GradientBoostingClassifier(n_estimators=100))
+], voting='soft')  # 'soft' = average probabilities, 'hard' = majority vote
+
+scores = cross_val_score(ensemble, data.data, data.target, cv=5)
+print(f"Ensemble accuracy: {scores.mean():.2%}")
+# Often beats any individual model
+```
+
+> **In production:** XGBoost and LightGBM are the most commonly deployed ML models for tabular data — banks (fraud detection), e-commerce (recommendation scoring), healthcare (risk prediction). They're fast, accurate, and handle messy real-world data well.
 
 ---
 
@@ -715,6 +897,45 @@ X_test = scaler.transform(X_test)          # apply same transform, no fitting
 
 > **How to spot leakage:** If your model performs suspiciously well (99%+ accuracy on a hard problem), check for leakage before celebrating.
 
+### Special case: Time Series Splits
+For time-ordered data, **you can't shuffle randomly** — future data would leak into training. Always split chronologically:
+
+```python
+from sklearn.model_selection import TimeSeriesSplit
+
+tscv = TimeSeriesSplit(n_splits=5)
+# Fold 1: train=[Jan-Mar], test=[Apr]
+# Fold 2: train=[Jan-Apr], test=[May]
+# Fold 3: train=[Jan-May], test=[Jun]  ← training set grows each fold
+```
+
+---
+
+# Data Augmentation
+
+Data augmentation **creates new training examples by applying transformations** to existing data — effectively increasing your dataset size without collecting new data. Critical when labeled data is scarce.
+
+**For images:**
+```python
+from torchvision import transforms
+
+augment = transforms.Compose([
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+    transforms.RandomCrop(224, padding=20),
+])
+# One cat photo → dozens of slightly different cat photos
+# The model learns "cat" regardless of orientation, lighting, or position
+```
+
+**For text (common techniques):**
+- **Synonym replacement:** "The movie was great" → "The film was excellent"
+- **Back-translation:** English → French → English (paraphrases automatically)
+- **Random insertion/deletion:** Add or remove words while preserving meaning
+
+**In production:** Data augmentation is standard in virtually every computer vision pipeline. ImageNet models use extensive augmentation during training. For NLP, augmentation is less common with large LLMs since they're pretrained on massive corpora, but it's still used for fine-tuning smaller models on limited labeled data.
+
 ---
 
 # Evaluation Metrics
@@ -856,7 +1077,37 @@ for degree in [1, 4, 15]:
 | Problem | Signs | Fixes |
 |---------|-------|-------|
 | Underfitting | High train error, high test error | More complex model, more features, less regularization |
-| Overfitting | Low train error, high test error | More training data, regularization, simpler model, dropout |
+| Overfitting | Low train error, high test error | More training data, regularization, simpler model, dropout, early stopping |
+
+### Early Stopping — The Most Practical Overfitting Prevention
+
+Monitor validation loss during training. **Stop training when validation loss starts increasing** even though training loss continues to decrease — that's the exact moment overfitting begins.
+
+```python
+# PyTorch early stopping pattern (used in virtually every deep learning project)
+best_val_loss = float('inf')
+patience = 5           # how many epochs to wait after val loss stops improving
+patience_counter = 0
+
+for epoch in range(1000):
+    train_loss = train_one_epoch(model, train_loader)
+    val_loss = evaluate(model, val_loader)
+
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        patience_counter = 0
+        torch.save(model.state_dict(), "best_model.pt")  # save the best checkpoint
+    else:
+        patience_counter += 1
+        if patience_counter >= patience:
+            print(f"Early stopping at epoch {epoch}")
+            break
+
+# Load the best model (not the last one!)
+model.load_state_dict(torch.load("best_model.pt"))
+```
+
+> **In production:** Early stopping is used in almost every neural network training pipeline. Libraries like PyTorch Lightning and Keras have built-in `EarlyStopping` callbacks.
 
 ---
 
@@ -1279,6 +1530,62 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
 
 > **Practical advice:** Start with **Adam** (lr=0.001) for most tasks. Use **AdamW** for fine-tuning transformers. Only switch to SGD+momentum if you need to squeeze the last bit of performance and are willing to tune aggressively.
 
+### Vanishing and Exploding Gradients
+
+During backpropagation, gradients are multiplied through each layer via the chain rule. In deep networks, this repeated multiplication can cause problems:
+
+- **Vanishing gradients:** Gradients shrink exponentially toward zero as they flow backward. Early layers barely update → the network can't learn deep features. This plagued sigmoid/tanh activations and vanilla RNNs.
+- **Exploding gradients:** Gradients grow exponentially, causing weights to swing wildly. Training becomes unstable (loss = NaN).
+
+**Solutions:**
+- Use **ReLU** activation (doesn't squash gradients for positive values)
+- Use **proper weight initialization** (see below)
+- Use **batch normalization** (stabilizes layer inputs)
+- Use **residual/skip connections** (ResNet — gradient flows through shortcut paths)
+- Use **gradient clipping** for exploding gradients: `torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)`
+
+### Weight Initialization
+
+How you initialize weights before training **dramatically affects** whether training converges. All-zeros is catastrophic (all neurons learn the same thing). Too large or too small values cause exploding/vanishing gradients.
+
+| Method | Formula | Best for |
+|--------|---------|----------|
+| **Xavier/Glorot** | Scales by 1/√(fan_in + fan_out) | Sigmoid, Tanh activations |
+| **He/Kaiming** | Scales by √(2/fan_in) | ReLU activations (the default in PyTorch) |
+
+PyTorch's `nn.Linear` uses Kaiming initialization by default — so you rarely need to set this manually, but knowing *why* matters for debugging.
+
+### Learning Rate Scheduling
+
+In practice, you almost never use a fixed learning rate. **Schedulers adjust the LR during training** for better convergence.
+
+| Scheduler | How it works | When to use |
+|-----------|-------------|-------------|
+| **StepLR** | Multiply LR by γ every N epochs | Simple, predictable decay |
+| **CosineAnnealingLR** | LR follows a cosine curve down to 0 | Standard for image models |
+| **Warmup + Linear Decay** | Start low, ramp up, then linearly decrease | Standard for Transformer fine-tuning |
+| **ReduceLROnPlateau** | Reduce LR when validation loss plateaus | Adaptive, easy to use |
+
+```python
+# Warmup + linear decay — standard for fine-tuning BERT/LLMs
+from transformers import get_linear_schedule_with_warmup
+
+optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5)
+scheduler = get_linear_schedule_with_warmup(
+    optimizer,
+    num_warmup_steps=100,    # warm up for first 100 steps
+    num_training_steps=1000  # total training steps
+)
+
+for batch in dataloader:
+    loss = train_step(batch)
+    loss.backward()
+    optimizer.step()
+    scheduler.step()   # update LR after each step
+```
+
+> **Why warmup?** At the start of training, the model's random weights produce large gradients. A high learning rate + large gradients = unstable training. Warmup uses a tiny LR initially, then gradually increases it once gradients stabilize. This is critical for Transformer training.
+
 ---
 
 ## Convolutional Neural Networks (CNNs)
@@ -1492,6 +1799,26 @@ print("Best CV accuracy:", f"{grid_search.best_score_:.2%}")
 
 ---
 
+# From One-Hot to Embeddings — How Words Become Numbers
+
+## One-Hot Encoding (the naive approach)
+Represent each word as a vector with a 1 in one position and 0s everywhere else. If your vocabulary has 50,000 words, each word is a 50,000-dimensional vector.
+
+```
+"cat"  = [1, 0, 0, 0, ...]   (50,000 dimensions)
+"dog"  = [0, 1, 0, 0, ...]
+"king" = [0, 0, 1, 0, ...]
+```
+
+**Problems:**
+- **Massive and sparse** — 50K-dimensional vector with a single 1
+- **No semantic relationship** — "cat" and "dog" are as different as "cat" and "earthquake" (distance is identical)
+- **Doesn't scale** — vocabulary growth = dimension explosion
+
+One-hot encoding is still used for categorical features in tabular ML (e.g., `color: [red, blue, green]` → `[1,0,0], [0,1,0], [0,0,1]`), but it's terrible for representing words in NLP.
+
+---
+
 # Word Embeddings (Word2Vec, GloVe)
 
 Word embeddings represent words as **dense numerical vectors** where semantic meaning is captured by position in space. Similar words land near each other.
@@ -1595,7 +1922,93 @@ print("Output shape:", output.shape)    # (4, 8) — each token gets a context-a
 ### Multi-Head Attention
 Instead of computing attention once, Transformers run **multiple attention heads in parallel** — each head can learn to attend to different types of relationships (syntactic, semantic, positional, etc.).
 
+```
+Multi-Head Attention with 8 heads:
+  Head 1 → learns subject-verb relationships
+  Head 2 → learns adjective-noun relationships
+  Head 3 → learns coreference (pronouns → nouns they refer to)
+  ...
+  → All 8 outputs concatenated and projected → final output
+```
+
+### Positional Encoding
+
+Attention has no concept of word order — "The cat sat on the mat" and "mat the on sat cat the" would produce identical attention patterns. **Positional encoding** injects position information into the input embeddings.
+
+**How it works:** Add a unique vector to each token's embedding that encodes its position in the sequence. The original Transformer uses sine/cosine functions at different frequencies:
+
+```python
+import torch
+import math
+
+def positional_encoding(seq_len, d_model):
+    pe = torch.zeros(seq_len, d_model)
+    position = torch.arange(0, seq_len).unsqueeze(1).float()
+    div_term = torch.exp(torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model))
+    pe[:, 0::2] = torch.sin(position * div_term)  # even dimensions
+    pe[:, 1::2] = torch.cos(position * div_term)  # odd dimensions
+    return pe
+
+# Each position gets a unique pattern of sine/cosine values
+# Position 0 → [sin(0), cos(0), sin(0), cos(0), ...]
+# Position 1 → [sin(1), cos(1), sin(0.01), cos(0.01), ...]
+# The model learns to use these patterns to understand word order
+```
+
+**Modern alternatives:** BERT uses learned positional embeddings (a trainable vector per position). RoPE (Rotary Position Embeddings) is used by Llama and most modern LLMs — it encodes relative positions and supports extending context length beyond training.
+
 > **Why attention dominates:** RNNs process tokens one-by-one (sequential, slow). Attention processes ALL tokens simultaneously (parallelizable, fast on GPUs) and captures long-range dependencies equally well regardless of distance.
+
+---
+
+# The Transformer Architecture ("Attention Is All You Need")
+
+The Transformer (2017) is the architecture behind BERT, GPT, Claude, and virtually all modern AI. Understanding its building blocks is essential.
+
+## Full Architecture (each block stacked N times):
+
+```
+INPUT TOKENS
+     ↓
+[Token Embeddings + Positional Encoding]
+     ↓
+┌─────────────────────────────┐
+│     Multi-Head Attention     │  ← each token attends to all others
+│            ↓                 │
+│     Add & Layer Norm         │  ← residual connection + normalization
+│            ↓                 │
+│     Feed-Forward Network     │  ← 2 linear layers with ReLU: expand then compress
+│            ↓                 │
+│     Add & Layer Norm         │  ← another residual connection
+└─────────────────────────────┘
+     ↓  (repeat N times)
+   OUTPUT
+```
+
+## Key building blocks explained:
+
+| Component | What it does | Why it matters |
+|-----------|-------------|---------------|
+| **Token Embeddings** | Convert token IDs to dense vectors | Words become numbers the model can process |
+| **Positional Encoding** | Add position information | Without this, word order is lost |
+| **Multi-Head Self-Attention** | Each token attends to every other token | Captures context and dependencies |
+| **Residual Connections (Add)** | Add the input of a sub-layer to its output | Enables training very deep networks (gradient flows through shortcuts) |
+| **Layer Normalization** | Normalize across features for each token | Stabilizes training, speeds up convergence |
+| **Feed-Forward Network** | Two linear layers (expand → ReLU → compress) | Adds non-linear transformation capacity per-token |
+
+## How the original paper uses Encoder + Decoder:
+
+The original "Attention Is All You Need" paper has both an encoder and decoder stack (for machine translation). Each decoder layer has an additional **cross-attention** sub-layer that attends to the encoder's output.
+
+```
+Encoder (6 layers):  Self-Attention → Feed-Forward  (processes input)
+Decoder (6 layers):  Masked Self-Attention → Cross-Attention → Feed-Forward  (generates output)
+                     ↑ can only see past tokens    ↑ attends to encoder
+```
+
+**Masked self-attention** in the decoder prevents tokens from attending to future positions — ensuring the model can only use information from tokens it has already generated (autoregressive).
+
+> **Why the Transformer won:** It's parallelizable (unlike RNNs), handles long-range dependencies (unlike CNNs), and scales efficiently to billions of parameters. These properties made GPT-3, GPT-4, Claude, and all modern LLMs possible.
 
 ---
 
@@ -1711,6 +2124,52 @@ After pretraining, BERT can be fine-tuned on any specific downstream task by add
 | **BioBERT** | Pretrained on biomedical text (PubMed) — better for clinical/scientific NLP |
 | **FinBERT** | Pretrained on financial text — better for finance sentiment, reports |
 | **XLM-RoBERTa** | Multilingual, supports 100 languages |
+
+---
+
+---
+
+# GPT (Generative Pre-trained Transformer)
+
+**GPT** is the decoder-only transformer family behind ChatGPT, the model that brought AI to mainstream consciousness. While BERT excels at understanding, GPT excels at **generating** text.
+
+## How GPT Works
+
+GPT is trained with a single, elegant objective: **predict the next token** given all previous tokens (autoregressive language modeling).
+
+```
+Input:  "The capital of France is"
+GPT predicts next token probabilities:
+  "Paris" → 0.92
+  "Lyon"  → 0.03
+  "a"     → 0.01
+  ...
+```
+
+During training, GPT reads enormous amounts of text and learns to predict each next word. This simple task, at massive scale, teaches the model grammar, facts, reasoning, code, and more.
+
+## GPT Evolution
+
+| Model | Year | Parameters | Key innovation |
+|-------|------|-----------|----------------|
+| GPT-1 | 2018 | 117M | Showed pre-training + fine-tuning works for NLP |
+| GPT-2 | 2019 | 1.5B | Zero-shot task performance emerges at scale |
+| GPT-3 | 2020 | 175B | Few-shot learning via prompting (no fine-tuning needed) |
+| GPT-3.5 / ChatGPT | 2022 | ~175B | RLHF alignment → first mainstream AI chatbot |
+| GPT-4 | 2023 | ~1.8T (MoE) | Multimodal (text + images), dramatically improved reasoning |
+
+## BERT vs GPT — When to Use Which
+
+| Scenario | Use BERT (encoder) | Use GPT (decoder) |
+|----------|-------------------|-------------------|
+| Classify emails as spam | Yes — needs understanding | Overkill |
+| Extract entities from documents | Yes — bidirectional context | Can do it, but slower |
+| Build a chatbot | No — can't generate text | Yes — designed for this |
+| Summarize articles | Not ideal | Yes — generates summaries |
+| Compute text embeddings | Yes — efficient, purpose-built | Can but SBERT is better |
+| Answer open-ended questions | Limited | Yes — excels at this |
+
+> **In production:** Most companies use BERT-family models (or SBERT) for search, classification, and embeddings. They use GPT-family models (or Claude) for content generation, chatbots, code assistants, and complex reasoning. Many systems use BOTH: BERT for fast retrieval, then GPT for generation (this is RAG).
 
 ---
 
@@ -2079,6 +2538,49 @@ response = client.messages.create(
 
 ---
 
+# Structured Output (JSON Mode)
+
+In production, you almost never want free-form text from an LLM. You want **structured, parseable output** — JSON, XML, or data that feeds directly into your application code.
+
+**Why it matters:** If your LLM returns "The sentiment is positive with a score of 0.8" as free text, you need fragile regex to extract the data. If it returns `{"sentiment": "positive", "score": 0.8}`, you just parse JSON.
+
+```python
+import anthropic
+import json
+
+client = anthropic.Anthropic()
+
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=200,
+    system="You are a data extraction API. Always respond with valid JSON only, no other text.",
+    messages=[{
+        "role": "user",
+        "content": """Extract the following from this text:
+        "John Smith, age 34, works at Google in Mountain View. His email is john@google.com."
+
+        Return JSON with fields: name, age, company, city, email"""
+    }]
+)
+
+data = json.loads(response.content[0].text)
+print(data)
+# {"name": "John Smith", "age": 34, "company": "Google", "city": "Mountain View", "email": "john@google.com"}
+
+# Now you can use it in your application:
+save_to_database(data['name'], data['email'])
+```
+
+**In production:** Structured output is used for:
+- Data extraction pipelines (parsing invoices, contracts, resumes)
+- API responses from LLM-powered backends
+- Automated workflows where downstream code needs predictable formats
+- Classification tasks where you need a label, not a paragraph
+
+> **Tip:** If the LLM sometimes returns invalid JSON, use libraries like `instructor` (Python) or `zod` (TypeScript) that validate and retry automatically. For Claude, you can also prefill the assistant response with `{` to force JSON output.
+
+---
+
 # Hallucination
 
 Hallucination is when an LLM **confidently generates false, fabricated, or unsupported information** — presenting it as fact.
@@ -2308,6 +2810,80 @@ print(response.content[0].text)
 
 > **RAG vs Fine-tuning:** RAG gives the model access to current, specific information at query time (no retraining needed). Fine-tuning changes the model's behavior permanently. Use RAG when the knowledge changes frequently (docs, policies). Use fine-tuning when you need a different behavior or style.
 
+## RAG in Production — Chunking, Reranking, and Architecture
+
+The simple RAG example above works for demos. Production RAG systems need careful engineering:
+
+### Document Chunking
+Large documents must be split into smaller chunks before embedding. How you chunk dramatically affects retrieval quality.
+
+| Strategy | How it works | Best for |
+|----------|-------------|----------|
+| **Fixed-size chunks** | Split every N tokens (e.g., 512) with overlap | Simple, general-purpose |
+| **Sentence-based** | Split on sentence boundaries | Preserving complete thoughts |
+| **Paragraph-based** | Split on paragraph breaks | Well-structured documents |
+| **Semantic chunking** | Split when topic changes (using embeddings) | Long documents with topic shifts |
+| **Recursive splitting** | Try larger chunks first, split smaller if needed | LangChain default, adaptable |
+
+**Key parameters:**
+- **Chunk size:** 256-1024 tokens typical. Smaller = more precise retrieval but less context per chunk. Larger = more context but retrieval noise
+- **Chunk overlap:** 10-20% overlap between consecutive chunks to avoid losing information at boundaries
+
+```python
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500,
+    chunk_overlap=100,     # 100 chars of overlap between chunks
+    separators=["\n\n", "\n", ". ", " "]  # try paragraph, then line, then sentence
+)
+
+document = "Your long document text here..."
+chunks = splitter.split_text(document)
+```
+
+### Reranking
+Initial retrieval (cosine similarity) is fast but approximate. **Reranking** uses a more powerful model to re-score the top candidates for higher precision.
+
+```
+Query → Embedding search (fast, top 20) → Reranker (accurate, picks top 3) → LLM
+```
+
+```python
+# Using a cross-encoder reranker
+from sentence_transformers import CrossEncoder
+
+reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+
+query = "How do I return a product?"
+candidates = ["Return policy...", "Shipping info...", "Refund process..."]
+
+# Score each candidate against the query
+scores = reranker.predict([(query, doc) for doc in candidates])
+# Reranker reads query + document together → much more accurate than cosine similarity
+```
+
+### Hybrid Search
+Combine **semantic search** (embeddings) with **keyword search** (BM25/TF-IDF) for the best of both worlds. Semantic search catches meaning; keyword search catches exact terms (product names, error codes).
+
+### Production RAG Architecture
+
+```
+User Query
+     ↓
+[Query Processing]  ← rephrase, expand, extract keywords
+     ↓
+[Hybrid Retrieval]  ← vector search + keyword search
+     ↓
+[Reranking]         ← cross-encoder rescoring top candidates
+     ↓
+[Context Assembly]  ← format retrieved chunks into prompt
+     ↓
+[LLM Generation]   ← generate answer grounded in context
+     ↓
+[Citation / Source tracking]  ← link answer back to source documents
+```
+
 ---
 
 # Vector Databases
@@ -2420,4 +2996,227 @@ for block in response.content:
 - **API calls** — interact with external services
 - **Database queries** — look up structured data
 
+### Agent Memory and Planning
+
+Advanced agents maintain **memory across conversations** and **plan multi-step workflows**:
+
+- **Short-term memory:** The conversation context window — what the agent has seen in this session
+- **Long-term memory:** Persisted facts stored in databases or files, recalled when relevant (e.g., user preferences, past decisions)
+- **Planning:** Agents break complex tasks into sub-tasks, execute them in order, and adapt when steps fail
+
+### Multi-Agent Systems
+
+Instead of one agent doing everything, **multiple specialized agents collaborate**:
+- **Orchestrator agent** — routes tasks to specialized sub-agents
+- **Research agent** — searches the web, reads documentation
+- **Code agent** — writes and executes code
+- **Review agent** — checks the output for quality and correctness
+
 > **The future of AI:** Agents represent the shift from "AI that talks" to "AI that does." Claude Code (the tool you're reading this in) is itself an AI agent — it reads your code, searches your codebase, writes files, and runs commands.
+
+---
+
+# Multimodal LLMs
+
+Multimodal models can process and generate **multiple types of content** — text, images, audio, video — in a single model.
+
+**Examples:**
+- **GPT-4V / GPT-4o** — text + images (can describe photos, read charts, analyze screenshots)
+- **Claude 3.5** — text + images (can interpret diagrams, UI mockups, handwriting)
+- **Gemini** — text + images + audio + video
+- **Whisper** — audio → text (speech recognition)
+
+**How vision works in practice:**
+
+```python
+import anthropic
+import base64
+
+client = anthropic.Anthropic()
+
+# Send an image to Claude for analysis
+with open("chart.png", "rb") as f:
+    image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=500,
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": image_data}},
+            {"type": "text", "text": "Describe what this chart shows. What are the key trends?"}
+        ]
+    }]
+)
+print(response.content[0].text)
+```
+
+**Real-world multimodal use cases:**
+- Analyzing medical images and generating reports
+- Processing scanned documents (OCR + understanding)
+- Accessibility (describing images for visually impaired users)
+- Quality control in manufacturing (inspecting product images)
+- Analyzing dashboards and charts from screenshots
+
+---
+
+# LLM Evaluation
+
+How do you measure if an LLM is actually good? This is one of the hardest problems in AI — unlike classification where you have a clear accuracy metric.
+
+## Types of Evaluation
+
+| Approach | How it works | Pros / Cons |
+|----------|-------------|-------------|
+| **Benchmarks** | Standardized test sets with known answers | Comparable across models, but can be gamed |
+| **Human evaluation** | Humans rate quality, helpfulness, safety | Gold standard, but expensive and slow |
+| **LLM-as-a-judge** | Use a strong LLM (GPT-4, Claude) to evaluate another LLM's outputs | Scalable, surprisingly good correlation with human ratings |
+| **Task-specific metrics** | BLEU (translation), ROUGE (summarization), pass@k (code) | Objective and automated, but narrow |
+
+## Key Benchmarks
+
+| Benchmark | What it tests |
+|-----------|-------------|
+| **MMLU** | Massive multitask language understanding (57 academic subjects) |
+| **HumanEval** | Code generation (can the model write correct Python functions?) |
+| **GSM8K** | Grade school math word problems (tests reasoning) |
+| **HellaSwag** | Common sense reasoning |
+| **MT-Bench** | Multi-turn conversation quality (LLM-as-judge) |
+| **LMSYS Chatbot Arena** | Head-to-head human preference voting (most trusted leaderboard) |
+
+**In practice — evaluating YOUR application:**
+
+```python
+# Simple LLM-as-judge evaluation for your own use case
+import anthropic
+
+client = anthropic.Anthropic()
+
+def evaluate_response(question, response, criteria):
+    judge_response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=200,
+        messages=[{
+            "role": "user",
+            "content": f"""Rate this AI response on a scale of 1-5 for: {criteria}
+
+Question: {question}
+Response: {response}
+
+Return only a JSON object: {{"score": <1-5>, "reasoning": "<brief explanation>"}}"""
+        }]
+    )
+    return judge_response.content[0].text
+
+# Evaluate helpfulness, accuracy, and safety of your chatbot responses
+```
+
+> **Critical insight:** No single metric captures LLM quality. In production, combine automated benchmarks with human spot-checking and real user feedback. Track metrics over time to catch regressions.
+
+---
+
+# Model Deployment and Serving
+
+Training a model is only half the job. **Deploying it into production** so users can access it reliably and efficiently is an entire discipline.
+
+## Common Deployment Patterns
+
+| Pattern | How it works | When to use |
+|---------|-------------|-------------|
+| **REST API** | Wrap model in a web server, serve predictions via HTTP | Most common. Web apps, mobile apps |
+| **Batch inference** | Process large datasets offline on a schedule | Nightly scoring, report generation |
+| **Streaming** | Token-by-token generation streamed to the client | Chat interfaces, real-time generation |
+| **Edge deployment** | Run model on device (mobile, IoT, browser) | When latency/privacy matters, no internet |
+
+### Simple API Deployment with FastAPI
+
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel
+import torch
+
+app = FastAPI()
+
+# Load model once at startup (not per-request!)
+model = torch.load("best_model.pt")
+model.eval()
+
+class PredictionRequest(BaseModel):
+    features: list[float]
+
+class PredictionResponse(BaseModel):
+    prediction: float
+    confidence: float
+
+@app.post("/predict", response_model=PredictionResponse)
+def predict(request: PredictionRequest):
+    with torch.no_grad():
+        tensor = torch.tensor([request.features])
+        output = model(tensor)
+        return PredictionResponse(
+            prediction=output.argmax().item(),
+            confidence=output.softmax(dim=1).max().item()
+        )
+
+# Run with: uvicorn main:app --host 0.0.0.0 --port 8000
+# Test with: curl -X POST localhost:8000/predict -d '{"features": [1.0, 2.0, 3.0]}'
+```
+
+### Production Considerations
+
+| Concern | Solution |
+|---------|---------|
+| **Latency** | Model optimization (quantization, ONNX, TensorRT), caching, GPU serving |
+| **Scalability** | Horizontal scaling, load balancing, auto-scaling (Kubernetes) |
+| **Reliability** | Health checks, graceful degradation, fallback models |
+| **Monitoring** | Log predictions, track accuracy drift, alert on anomalies |
+| **Cost** | Batch similar requests, use smaller models where possible, caching |
+
+### For LLM serving specifically:
+- **vLLM** — high-throughput LLM serving with PagedAttention
+- **TGI** (Text Generation Inference by HuggingFace) — production LLM server
+- **Ollama** — run local LLMs easily on your machine
+- **API providers** (Anthropic, OpenAI) — simplest: just call the API
+
+---
+
+# Model Distillation
+
+Model distillation trains a **smaller, faster "student" model** to mimic a large "teacher" model's behavior. The student learns from the teacher's output probabilities (soft labels) rather than the original hard labels.
+
+**Analogy:** Instead of learning physics from a textbook (hard labels), you learn from a brilliant tutor who explains their reasoning and confidence levels for each answer (soft labels). The nuanced explanations help you learn faster and better.
+
+**Why it works:** The teacher model's probability distribution contains rich information. If it predicts "cat: 0.8, tiger: 0.15, dog: 0.04, car: 0.01", the student learns that cats look somewhat like tigers — something binary labels ("cat") don't convey.
+
+**Real-world use:** DistilBERT (the popular distilled version of BERT) retains 97% of BERT's performance at 60% the speed and 40% the size — widely used in production where latency matters.
+
+---
+
+# Responsible AI and Safety
+
+Building AI systems that are **safe, fair, transparent, and beneficial** is not optional — it's a core engineering requirement.
+
+## Key Concerns
+
+| Concern | What it means | Example |
+|---------|--------------|---------|
+| **Bias** | Model reflects or amplifies biases in training data | Resume screening tool that disadvantages certain demographics |
+| **Fairness** | Model performs differently across demographic groups | Facial recognition accuracy varying by skin tone |
+| **Hallucination** | LLMs generate false information confidently | Medical chatbot giving incorrect health advice |
+| **Privacy** | Models can memorize and leak training data | LLM reproducing personal information from training set |
+| **Transparency** | Users should know they're interacting with AI | Chatbot that doesn't disclose it's an AI |
+| **Misuse** | AI used for harmful purposes | Deepfakes, automated phishing, misinformation at scale |
+
+## Practical Mitigation
+
+| Strategy | How to implement |
+|----------|-----------------|
+| **Bias auditing** | Test model performance across demographic subgroups before deployment |
+| **Content filtering** | Add safety classifiers to catch harmful inputs and outputs |
+| **Human-in-the-loop** | Keep humans in the decision loop for high-stakes applications |
+| **Red teaming** | Systematically try to make the model fail or produce harmful output |
+| **Guardrails** | Set boundaries on what the model can/cannot do (system prompts, output validation) |
+| **Transparency** | Document model capabilities, limitations, and training data |
+
+> **The industry reality:** Every major AI company now has responsible AI teams and policies. Regulations like the EU AI Act are making safety practices legally required, not just ethically important. As an AI practitioner, understanding these concerns is as essential as understanding backpropagation.
