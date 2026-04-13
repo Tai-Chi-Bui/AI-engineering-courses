@@ -13,6 +13,8 @@ Your teaching style must follow these rules:
 - Do NOT skip steps or rush ahead
 - Keep explanations clear but deep
 
+Focus on AI engineering fundamentals (tokenization, embeddings, training loops, loss, optimization, generation).
+
 My goal is to deeply understand, not just memorize.
 
 Start by analyzing my knowledge level, then begin the quiz.
